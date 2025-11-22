@@ -146,7 +146,7 @@ class Server {
                 .code(400)
                 .send({ error: "Missing model in request body" });
             }
-            const [provider, model] = body.model.split(",");
+            const [provider, model] = body.model.split("@@");
             body.model = model;
             req.provider = provider;
             return;
