@@ -18,7 +18,8 @@
     "dev": "nodemon",
     "start": "node dist/cjs/server.cjs",
     "start:esm": "node dist/esm/server.mjs",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src --ext .ts,.tsx",
+    "prepare": "npm run build"
   },
   "keywords": [],
   "author": "",
