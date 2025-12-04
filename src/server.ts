@@ -69,6 +69,7 @@ class Server {
   llmService: LLMService;
   providerService: ProviderService;
   transformerService: TransformerService;
+  private customRouter?: Function;
 
   constructor(options: ServerOptions = {}) {
     this.app = createApp(options.logger ?? true);
@@ -84,7 +85,20 @@ class Server {
         this.app.log
       );
       this.llmService = new LLMService(this.providerService);
+      this.loadCustomRouter();
     });
+  }
+
+  private loadCustomRouter(): void {
+    const customRouterPath = this.configService.get<string>("CUSTOM_ROUTER_PATH");
+    if (!customRouterPath) return;
+
+    try {
+      this.customRouter = require(customRouterPath);
+      this.app.log.info(`Loaded custom router from: ${customRouterPath}`);
+    } catch (error: any) {
+      this.app.log.error(`Failed to load custom router: ${error.message}`);
+    }
   }
 
   // Type-safe register method using Fastify native types
@@ -146,6 +160,28 @@ class Server {
                 .code(400)
                 .send({ error: "Missing model in request body" });
             }
+
+            // Call custom   router if available
+            if (this.customRouter) {
+              try {
+                const result = await this.customRouter(req, this.configService.getAll(), {
+                  llmService: this.llmService,
+                  providerService: this.providerService,
+                  transformerService: this.transformerService,
+                });
+
+                // If custom router returns a model, use it
+                if (result && typeof result === 'string') {
+                  body.model = result;
+                } else {
+                  body.model = "unknown@@unknown"; 
+                }
+              } catch (error: any) {
+                req.log.error(`Custom router error: ${error.message}`);
+                // Continue with default routing on error
+              }
+            }
+
             const [provider, model] = body.model.split("@@");
             body.model = model;
             req.provider = provider;
