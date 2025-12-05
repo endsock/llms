@@ -173,9 +173,8 @@ class Server {
                 // If custom router returns a model, use it
                 if (result && typeof result === 'string') {
                   body.model = result;
-                } else {
-                  body.model = "unknown@@unknown"; 
                 }
+                
               } catch (error: any) {
                 req.log.error(`Custom router error: ${error.message}`);
                 // Continue with default routing on error
