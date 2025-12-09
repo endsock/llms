@@ -85,7 +85,7 @@ class Server {
         this.app.log
       );
       this.llmService = new LLMService(this.providerService);
-      this.loadCustomRouter();
+      // this.loadCustomRouter();
     });
   }
 
@@ -161,25 +161,25 @@ class Server {
                 .send({ error: "Missing model in request body" });
             }
 
-            // Call custom   router if available
-            if (this.customRouter) {
-              try {
-                const result = await this.customRouter(req, this.configService.getAll(), {
-                  llmService: this.llmService,
-                  providerService: this.providerService,
-                  transformerService: this.transformerService,
-                });
+            // // Call custom   router if available
+            // if (this.customRouter) {
+            //   try {
+            //     const result = await this.customRouter(req, this.configService.getAll(), {
+            //       llmService: this.llmService,
+            //       providerService: this.providerService,
+            //       transformerService: this.transformerService,
+            //     });
 
-                // If custom router returns a model, use it
-                if (result && typeof result === 'string') {
-                  body.model = result;
-                }
+            //     // If custom router returns a model, use it
+            //     if (result && typeof result === 'string') {
+            //       body.model = result;
+            //     }
                 
-              } catch (error: any) {
-                req.log.error(`Custom router error: ${error.message}`);
-                // Continue with default routing on error
-              }
-            }
+            //   } catch (error: any) {
+            //     req.log.error(`Custom router error: ${error.message}`);
+            //     // Continue with default routing on error
+            //   }
+            // }
 
             const [provider, model] = body.model.split("@@");
             body.model = model;
