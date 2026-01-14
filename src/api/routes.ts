@@ -226,29 +226,46 @@ async function sendRequestToProvider(
       }
   }
 
-  const response = await sendUnifiedRequest(
-    url,
-    requestBody,
-    {
-      httpsProxy: fastify._server!.configService.getHttpsProxy(),
-      ...config,
-      headers: JSON.parse(JSON.stringify(requestHeaders)),
-    },
-    fastify.log,
-    context
-  );
+  // 获取429重试配置
+  const maxRetries = config.retry429 ?? 0;
+  let retryCount = 0;
 
-  // 处理请求错误
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw createApiError(
-      `Error from provider(${provider.name},${requestBody.model}: ${response.status}): ${errorText}`,
-      response.status,
-      "provider_response_error"
+  while (true) {
+    const response = await sendUnifiedRequest(
+      url,
+      requestBody,
+      {
+        httpsProxy: fastify._server!.configService.getHttpsProxy(),
+        ...config,
+        headers: JSON.parse(JSON.stringify(requestHeaders)),
+      },
+      fastify.log,
+      context
     );
-  }
 
-  return response;
+    // 处理请求错误
+    if (!response.ok) {
+      // 如果是429错误且还有重试次数
+      if (response.status === 429 && retryCount < maxRetries) {
+        retryCount++;
+        fastify.log.warn(
+          `Received 429 from provider ${provider.name}, retrying (${retryCount}/${maxRetries})...`
+        );
+        // 等待一段时间后重试，使用指数退避策略
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retryCount - 1), 10000)));
+        continue;
+      }
+
+      const errorText = await response.text();
+      throw createApiError(
+        `Error from provider(${provider.name},${requestBody.model}: ${response.status}): ${errorText}`,
+        response.status,
+        "provider_response_error"
+      );
+    }
+
+    return response;
+  }
 }
 
 /**
