@@ -252,7 +252,7 @@ async function sendRequestToProvider(
           `Received 429 from provider ${provider.name}, retrying (${retryCount}/${maxRetries})...`
         );
         // 等待一段时间后重试，使用指数退避策略
-        await new Promise(resolve => setTimeout(resolve, Math.min(500 * Math.pow(2, retryCount - 1), 10000)));
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retryCount - 1), 10000)));
         continue;
       }
 
