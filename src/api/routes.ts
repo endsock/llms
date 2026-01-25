@@ -227,7 +227,8 @@ async function sendRequestToProvider(
   }
 
   // 获取429重试配置
-  const maxRetries = config.retry429 ?? 0;
+  const maxRetries = config.retryMax ?? 0;
+  const retryCode = config.retryCode ?? 429;
   let retryCount = 0;
 
   while (true) {
@@ -246,7 +247,7 @@ async function sendRequestToProvider(
     // 处理请求错误
     if (!response.ok) {
       // 如果是429错误且还有重试次数
-      if (response.status === 429 && retryCount < maxRetries) {
+      if (response.status === retryCode && retryCount < maxRetries) {
         retryCount++;
         fastify.log.warn(
           `Received 429 from provider ${provider.name}, retrying (${retryCount}/${maxRetries})...`

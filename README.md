@@ -1,3 +1,5 @@
+docker build --no-cache -t local/ccr:v1.0.12 .
+
 # LLMs
 
 > A universal LLM API transformation server, initially developed for the [claude-code-router](https://github.com/musistudio/claude-code-router).
