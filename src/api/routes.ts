@@ -5,9 +5,11 @@ import {
   FastifyReply,
 } from "fastify";
 import { RegisterProviderRequest, LLMProvider } from "@/types/llm";
-import { sendUnifiedRequest } from "@/utils/request";
+import { probeEmptyStreamResponse, sendUnifiedRequest } from "@/utils/request";
 import { createApiError } from "./middleware";
 import { version } from "../../package.json";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * 处理transformer端点的主函数
@@ -229,7 +231,9 @@ async function sendRequestToProvider(
   // 获取429重试配置
   const maxRetries = config.retryMax ?? 0;
   const retryCode = config.retryCode ?? 429;
+  const maxStreamRetries = config.streamRetryMax ?? 5;
   let retryCount = 0;
+  let streamRetryCount = 0;
 
   while (true) {
     const response = await sendUnifiedRequest(
@@ -253,7 +257,7 @@ async function sendRequestToProvider(
           `Received 429 from provider ${provider.name}, retrying (${retryCount}/${maxRetries})...`
         );
         // 等待一段时间后重试，使用指数退避策略
-        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retryCount - 1), 10000)));
+        await sleep(Math.min(1000 * Math.pow(2, retryCount - 1), 10000));
         continue;
       }
 
@@ -263,6 +267,23 @@ async function sendRequestToProvider(
         response.status,
         "provider_response_error"
       );
+    }
+
+    const isStreamResponse =
+      requestBody.stream === true &&
+      response.headers.get("Content-Type")?.includes("text/event-stream");
+
+    if (isStreamResponse) {
+      const probeResult = await probeEmptyStreamResponse(response);
+      if (probeResult.empty && streamRetryCount < maxStreamRetries) {
+        streamRetryCount++;
+        fastify.log.warn(
+          `Received empty stream from provider ${provider.name}, retrying (${streamRetryCount}/${maxStreamRetries})...`
+        );
+        await sleep(Math.min(1000 * Math.pow(2, streamRetryCount - 1), 10000));
+        continue;
+      }
+      return probeResult.response;
     }
 
     return response;
