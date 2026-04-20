@@ -1,4 +1,4 @@
-docker build --no-cache -t local/ccr:v1.0.12 .
+docker build --no-cache -t local/ccr:v1.0.14 .
 
 # LLMs
 

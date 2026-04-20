@@ -92,6 +92,10 @@ async function processRequestTransformers(
 
   // 检查是否应该跳过转换器（透传参数）
   bypass = shouldBypassTransformers(provider, transformer, body);
+  const skipTransformRequestOut = shouldSkipTransformRequestOut(
+    provider,
+    context
+  );
 
   if (bypass) {
     if (headers instanceof Headers) {
@@ -103,7 +107,11 @@ async function processRequestTransformers(
   }
 
   // 执行transformer的transformRequestOut方法
-  if (!bypass && typeof transformer.transformRequestOut === "function") {
+  if (
+    !bypass &&
+    !skipTransformRequestOut &&
+    typeof transformer.transformRequestOut === "function"
+  ) {
     const transformOut = await transformer.transformRequestOut(requestBody);
     if (transformOut.body) {
       requestBody = transformOut.body;
@@ -154,6 +162,23 @@ async function processRequestTransformers(
   }
 
   return { requestBody, config, bypass };
+}
+
+function shouldSkipTransformRequestOut(
+  provider: any,
+  context: any
+): boolean {
+  const path = context?.req?.url?.split("?")[0];
+  if (!path || !provider.transformer?.use?.length) {
+    return false;
+  }
+
+  return provider.transformer.use.some((providerTransformer: any) => {
+    return (
+      Array.isArray(providerTransformer?.rawRequestInEndpoints) &&
+      providerTransformer.rawRequestInEndpoints.includes(path)
+    );
+  });
 }
 
 /**
